@@ -1,0 +1,32 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip project
+        run: unzip -o AIStudio2API-Android.zip
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Download AIStudio2API
+        run: |
+          mkdir -p app/src/main/jniLibs/arm64-v8a tmp_bin
+          URL=$(curl -s https://api.github.com/repos/Mag1cFall/AIStudio2API/releases/latest | jq -r '.assets[] | select(.name | test("linux.*arm64.*\\.tar\\.gz$")) | .browser_download_url' | head -n 1)
+          curl -fSL "$URL" -o tmp_bin/release.tar.gz
+          tar -xzf tmp_bin/release.tar.gz -C tmp_bin
+          cp "$(find tmp_bin -type f -name 'aistudio2api' | head -n 1)" app/src/main/jniLibs/arm64-v8a/libaistudio2api.so
+          chmod +x app/src/main/jniLibs/arm64-v8a/libaistudio2api.so
+          rm -rf tmp_bin
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - run: gradle assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AIStudio2API-arm64-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
